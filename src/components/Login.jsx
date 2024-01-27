@@ -6,12 +6,16 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     console.log(e);
+    const userData = {
+      username,
+      password,
+    };
     const res = await fetch("http://localhost:3000/user/login", {
       method: "POST",
-      body: JSON.stringify({
-        username: username,
-        password: password,
-      }),
+      headers: {
+        "Content-Type": "application/json", //used by 
+      },
+      body: JSON.stringify(userData),
     });
     const data = await res.json();
     if (data.message == "Success") {
