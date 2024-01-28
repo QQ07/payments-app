@@ -2,15 +2,28 @@ const express = require("express");
 const { User } = require("../db");
 const jwt = require("jsonwebtoken");
 const AuthenticateJWT = require("../middleware/authenticateJWT");
-require("dotenv").config();
-const SECRET = process.env.JWT_SECRET;
+const { JWT_SECRET } = require("../config");
 const router = express.Router();
 
 router.post("/signup", async (req, res) => {
-  const newUser = new User(req.body);
-  await newUser.save();
-  res.json({ msg: "User created Successfully" });
+  const { username, password, balance, firstName, lastName } = req.body;
+  try {
+    const newUser = new User({
+      username,
+      password,
+      balance,
+      firstName,
+      lastName,
+    });
+    await newUser.save();
+    const token = jwt.sign({ username, role: "user" }, JWT_SECRET);
+    res.json({ msg: "User created Successfully", token });
+  } catch (error) {
+    console.log(error);
+    res.json({ message: "Database Error", error });
+  }
 });
+
 router.post("/login", async (req, res) => {
   console.log("reached here");
   const { username, password } = req.body;
@@ -21,7 +34,7 @@ router.post("/login", async (req, res) => {
 
     if (user) {
       if (user.password == password) {
-        const token = jwt.sign({ username, role: "user" }, SECRET);
+        const token = jwt.sign({ username, role: "user" }, JWT_SECRET);
         res.json({ message: "Success", token });
       } else {
         res.status(500).json({ message: "wrong password" });
@@ -34,8 +47,27 @@ router.post("/login", async (req, res) => {
     res.json({ message: "an error occured" });
   }
 });
+
 router.get("/me", AuthenticateJWT, async (req, res) => {
-  res.send("you");
+  res.json({ user: req.user.username });
+});
+
+router.put("/update", AuthenticateJWT, async (req, res) => {
+  const { firstName, lastName } = req.body;
+  try {
+    await User.findOneAndUpdate(
+      { username: req.user.username },
+      {
+        firstName: firstName,
+        lastName: lastName,
+      }
+      // {new:true} // so the new user object(document) is returned
+    );
+    res.json({ message: `${req.user.username} updated` });
+  } catch (error) {
+    console.log(error);
+    res.status(404).json({ message: "some error occured" });
+  }
 });
 
 module.exports = router;
